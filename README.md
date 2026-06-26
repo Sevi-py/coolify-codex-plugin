@@ -1,6 +1,6 @@
 # Coolify Codex Plugin
 
-Control self-hosted Coolify from Codex through a local MCP server and a Coolify-aware workflow skill.
+Control Coolify Cloud or a self-hosted Coolify instance from Codex through a local MCP server and a Coolify-aware workflow skill.
 
 The plugin is built around a sanitized endpoint index generated from Coolify's official OpenAPI spec for the `v4.x` branch. It includes named tools for the workflows agents use most often, plus a generic API request tool and OpenAPI search for complete endpoint coverage as Coolify evolves.
 
@@ -18,7 +18,7 @@ The plugin is built around a sanitized endpoint index generated from Coolify's o
 ## Requirements
 
 - Node.js 20 or newer.
-- A Coolify instance with API access enabled.
+- Coolify Cloud, or a self-hosted Coolify instance with API access enabled.
 - A Coolify API token.
 
 Create an API token in Coolify at `/security/api-tokens`. Use the least-privileged token that can perform the work you want Codex to do.
@@ -26,19 +26,21 @@ Create an API token in Coolify at `/security/api-tokens`. Use the least-privileg
 Coolify does not currently document a browser OAuth flow for API clients. This plugin includes a setup helper that opens the right dashboard page and prints the environment variables to set:
 
 ```bash
-npm run setup -- https://coolify.example.com
+npm run setup
 ```
+
+By default, the plugin targets Coolify Cloud at `https://app.coolify.io`. Pass a URL or set `COOLIFY_BASE_URL` when you want to use a self-hosted instance.
 
 ## Configuration
 
 Set these environment variables where Codex starts MCP servers:
 
 ```bash
-export COOLIFY_BASE_URL="https://coolify.example.com"
+export COOLIFY_BASE_URL="https://app.coolify.io"
 export COOLIFY_API_TOKEN="your-coolify-api-token"
 ```
 
-`COOLIFY_BASE_URL` can be either the instance root or the API root:
+`COOLIFY_BASE_URL` is optional for Coolify Cloud. For a self-hosted instance, set it to either the instance root or the API root:
 
 ```bash
 https://coolify.example.com
@@ -65,6 +67,7 @@ Sensitive-looking fields are redacted by default. Some tools accept `revealSensi
 ## Development
 
 ```bash
+npm run setup -- --no-open
 npm run setup -- --no-open https://coolify.example.com
 npm run check
 npm run inspect:openapi

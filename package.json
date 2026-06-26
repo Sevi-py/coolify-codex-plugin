@@ -1,7 +1,7 @@
 {
   "name": "coolify-codex-plugin",
   "version": "0.1.0",
-  "description": "Codex plugin for controlling self-hosted Coolify instances.",
+  "description": "Codex plugin for controlling Coolify Cloud and self-hosted Coolify instances.",
   "type": "module",
   "private": true,
   "license": "MIT",

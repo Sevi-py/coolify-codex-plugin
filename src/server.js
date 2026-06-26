@@ -11,6 +11,7 @@ const lifecycleKinds = ["application", "database", "service"];
 const lifecycleActions = ["start", "stop", "restart"];
 const envKinds = ["application", "database", "service"];
 const httpMethods = ["GET", "POST", "PATCH", "DELETE"];
+const DEFAULT_COOLIFY_BASE_URL = "https://app.coolify.io";
 
 const listPaths = {
   application: "/applications",
@@ -41,7 +42,7 @@ const tools = [
     inputSchema: objectSchema({
       baseUrl: {
         type: "string",
-        description: "Optional Coolify instance URL. Falls back to COOLIFY_BASE_URL when omitted."
+        description: "Optional Coolify root or API URL. Falls back to COOLIFY_BASE_URL, then Coolify Cloud."
       }
     })
   },
@@ -139,7 +140,7 @@ const tools = [
 
 const handlers = {
   async coolify_setup(args) {
-    const baseUrl = optionalString(args.baseUrl, "baseUrl") || process.env.COOLIFY_BASE_URL;
+    const baseUrl = optionalString(args.baseUrl, "baseUrl") || process.env.COOLIFY_BASE_URL || DEFAULT_COOLIFY_BASE_URL;
     const cfg = normalizeBaseUrl(baseUrl);
     return toolText({
       baseUrl: cfg.rootBase,
@@ -308,9 +309,9 @@ function objectSchema(properties, required = []) {
 }
 
 function normalizeBaseUrl(value) {
-  const raw = (value || "").trim().replace(/\/+$/, "");
+  const raw = (value || DEFAULT_COOLIFY_BASE_URL).trim().replace(/\/+$/, "");
   if (!raw) {
-    throw new Error("Set COOLIFY_BASE_URL to your Coolify instance URL.");
+    throw new Error("Set COOLIFY_BASE_URL to a Coolify root or API URL.");
   }
   const url = new URL(raw);
   if (!["http:", "https:"].includes(url.protocol)) {
@@ -328,7 +329,7 @@ function config({ requireToken = true } = {}) {
     throw new Error("Set COOLIFY_API_TOKEN to a Coolify API token.");
   }
   return {
-    ...normalizeBaseUrl(process.env.COOLIFY_BASE_URL),
+    ...normalizeBaseUrl(process.env.COOLIFY_BASE_URL || DEFAULT_COOLIFY_BASE_URL),
     token
   };
 }

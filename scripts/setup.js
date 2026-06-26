@@ -1,21 +1,22 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
-import { createInterface } from "node:readline/promises";
-import { stdin as input, stdout as output } from "node:process";
 
 const args = new Set(process.argv.slice(2));
 const positional = process.argv.slice(2).filter((arg) => !arg.startsWith("--"));
+const DEFAULT_COOLIFY_BASE_URL = "https://app.coolify.io";
 
 function usage() {
   console.log(`Coolify Codex Plugin setup
 
 Usage:
+  npm run setup
+  npm run setup -- --no-open
   npm run setup -- https://coolify.example.com
-  npm run setup -- --no-open https://coolify.example.com
 
 This helper opens the Coolify API token page and prints the environment
 variables this plugin needs. Coolify does not currently document a browser
-OAuth flow for API clients, so the token still has to be created in Coolify.`);
+OAuth flow for API clients, so the token still has to be created in Coolify.
+Without a URL argument, setup uses Coolify Cloud (${DEFAULT_COOLIFY_BASE_URL}).`);
 }
 
 function normalizeBaseUrl(value) {
@@ -29,15 +30,6 @@ function normalizeBaseUrl(value) {
   }
   const base = url.toString().replace(/\/+$/, "");
   return base.endsWith("/api/v1") ? base.slice(0, -"/api/v1".length) : base;
-}
-
-async function askBaseUrl() {
-  const rl = createInterface({ input, output });
-  try {
-    return await rl.question("Coolify URL: ");
-  } finally {
-    rl.close();
-  }
 }
 
 function browserCommand(url) {
@@ -64,7 +56,7 @@ if (args.has("--help") || args.has("-h")) {
   process.exit(0);
 }
 
-const rawBaseUrl = positional[0] || process.env.COOLIFY_BASE_URL || await askBaseUrl();
+const rawBaseUrl = positional[0] || process.env.COOLIFY_BASE_URL || DEFAULT_COOLIFY_BASE_URL;
 const baseUrl = normalizeBaseUrl(rawBaseUrl);
 const tokenUrl = `${baseUrl}/security/api-tokens`;
 const apiSettingsUrl = `${baseUrl}/settings/advanced`;

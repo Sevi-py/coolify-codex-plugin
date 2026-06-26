@@ -1,12 +1,12 @@
 ---
 name: coolify
-description: Control self-hosted Coolify instances from Codex using the bundled Coolify API MCP server. Use when the user asks to inspect, deploy, create, update, restart, stop, configure, or troubleshoot Coolify applications, services, databases, servers, projects, deployments, environment variables, domains, teams, private keys, GitHub apps, cloud tokens, scheduled tasks, backups, or other Coolify API resources.
+description: Control Coolify Cloud or self-hosted Coolify instances from Codex using the bundled Coolify API MCP server. Use when the user asks to inspect, deploy, create, update, restart, stop, configure, or troubleshoot Coolify applications, services, databases, servers, projects, deployments, environment variables, domains, teams, private keys, GitHub apps, cloud tokens, scheduled tasks, backups, or other Coolify API resources.
 license: MIT
 ---
 
 # Coolify
 
-Use this skill when working with a self-hosted Coolify instance.
+Use this skill when working with Coolify Cloud or a self-hosted Coolify instance.
 
 ## Before Acting
 
@@ -20,12 +20,18 @@ Use this skill when working with a self-hosted Coolify instance.
 
 The MCP server expects:
 
-- `COOLIFY_BASE_URL`: the Coolify instance root, or the `/api/v1` URL.
+- `COOLIFY_BASE_URL`: optional for Coolify Cloud, which defaults to `https://app.coolify.io`; set it to the instance root or `/api/v1` URL for a self-hosted instance.
 - `COOLIFY_API_TOKEN`: a scoped Coolify API token.
 
-If a tool reports missing configuration, help the user set those environment variables. Do not ask the user to paste secrets into chat unless there is no safer path.
+If a tool reports missing token configuration, help the user set `COOLIFY_API_TOKEN`. If the user is not using Coolify Cloud, help them set `COOLIFY_BASE_URL` too. Do not ask the user to paste secrets into chat unless there is no safer path.
 
 Coolify does not currently document browser OAuth-style authorization for API clients. If the user wants setup help, use `coolify_setup` or suggest running:
+
+```bash
+npm run setup
+```
+
+For self-hosted instances, pass the instance URL:
 
 ```bash
 npm run setup -- https://coolify.example.com

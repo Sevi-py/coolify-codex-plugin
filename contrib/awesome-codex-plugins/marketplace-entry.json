@@ -10,6 +10,6 @@
     "authentication": "ON_INSTALL"
   },
   "category": "Development & Workflow",
-  "description": "Control self-hosted Coolify from Codex with a dependency-free MCP server for projects, servers, applications, services, databases, deployments, environment variables, logs, teams, and raw OpenAPI-backed API calls.",
+  "description": "Control Coolify from Codex with Coolify Cloud by default or a self-hosted instance, using a dependency-free MCP server for projects, servers, applications, services, databases, deployments, environment variables, logs, teams, and raw OpenAPI-backed API calls.",
   "icon": "./plugins/Sevi-py/coolify-codex-plugin/assets/icon.svg"
 }

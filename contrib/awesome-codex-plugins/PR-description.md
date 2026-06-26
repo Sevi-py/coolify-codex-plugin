@@ -1,6 +1,6 @@
 ## Summary
 
-Adds Coolify, a Codex plugin for controlling self-hosted Coolify instances through a dependency-free local MCP server and a Coolify workflow skill.
+Adds Coolify, a Codex plugin for controlling Coolify Cloud or self-hosted Coolify instances through a dependency-free local MCP server and a Coolify workflow skill.
 
 ## Scanner
 
