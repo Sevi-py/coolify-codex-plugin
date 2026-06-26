@@ -1,0 +1,15 @@
+{
+  "name": "coolify",
+  "displayName": "Coolify",
+  "source": {
+    "source": "local",
+    "path": "./plugins/Sevi-py/coolify-codex-plugin"
+  },
+  "policy": {
+    "installation": "AVAILABLE",
+    "authentication": "ON_INSTALL"
+  },
+  "category": "Development & Workflow",
+  "description": "Control self-hosted Coolify from Codex with a dependency-free MCP server for projects, servers, applications, services, databases, deployments, environment variables, logs, teams, and raw OpenAPI-backed API calls.",
+  "icon": "./plugins/Sevi-py/coolify-codex-plugin/assets/icon.svg"
+}

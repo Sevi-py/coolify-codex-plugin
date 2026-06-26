@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "coolify-api": {
+      "command": "node",
+      "args": [
+        "./src/server.js"
+      ],
+      "cwd": "."
+    }
+  }
+}

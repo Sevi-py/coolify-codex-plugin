@@ -1,0 +1,10 @@
+{
+  "name": "Coolify",
+  "url": "https://github.com/Sevi-py/coolify-codex-plugin",
+  "owner": "Sevi-py",
+  "repo": "coolify-codex-plugin",
+  "description": "Control self-hosted Coolify from Codex with a dependency-free MCP server for projects, servers, applications, services, databases, deployments, environment variables, logs, teams, and raw OpenAPI-backed API calls.",
+  "category": "Development & Workflow",
+  "source": "awesome-codex-plugins",
+  "install_url": "https://raw.githubusercontent.com/Sevi-py/coolify-codex-plugin/HEAD/.codex-plugin/plugin.json"
+}
