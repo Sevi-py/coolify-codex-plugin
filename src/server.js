@@ -1,7 +1,18 @@
 #!/usr/bin/env node
+import { spawn } from "node:child_process";
+import { randomBytes } from "node:crypto";
+import http from "node:http";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  clearStoredCredentials,
+  credentialStatus,
+  DEFAULT_COOLIFY_BASE_URL,
+  loadCredentials,
+  normalizeBaseUrl,
+  saveCredentials
+} from "./credentials.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const openapi = JSON.parse(readFileSync(resolve(__dirname, "../data/openapi-index.json"), "utf8"));
@@ -11,7 +22,6 @@ const lifecycleKinds = ["application", "database", "service"];
 const lifecycleActions = ["start", "stop", "restart"];
 const envKinds = ["application", "database", "service"];
 const httpMethods = ["GET", "POST", "PATCH", "DELETE"];
-const DEFAULT_COOLIFY_BASE_URL = "https://app.coolify.io";
 
 const listPaths = {
   application: "/applications",
@@ -38,13 +48,50 @@ const tools = [
   {
     name: "coolify_setup",
     title: "Coolify Setup Helper",
-    description: "Generate setup URLs and environment-variable guidance for connecting this plugin to a Coolify instance.",
+    description: "Generate setup URLs and local credential guidance for connecting this plugin to a Coolify instance.",
     inputSchema: objectSchema({
       baseUrl: {
         type: "string",
-        description: "Optional Coolify root or API URL. Falls back to COOLIFY_BASE_URL, then Coolify Cloud."
+        description: "Optional Coolify root or API URL. Falls back to the saved connection, then Coolify Cloud."
       }
     })
+  },
+  {
+    name: "coolify_configure",
+    title: "Configure Coolify Connection",
+    description: "Start a local browser setup flow, or save a Coolify instance URL and scoped API token locally.",
+    inputSchema: objectSchema({
+      baseUrl: {
+        type: "string",
+        description: "Optional Coolify root or API URL. Defaults to Coolify Cloud unless a URL was previously saved."
+      },
+      apiToken: {
+        type: "string",
+        description: "Optional scoped Coolify API token. If omitted, the plugin opens a local browser setup page."
+      },
+      openBrowser: {
+        type: "boolean",
+        default: true,
+        description: "Open the local setup page in the default browser when apiToken is omitted."
+      },
+      verify: {
+        type: "boolean",
+        default: true,
+        description: "Verify the token with Coolify before saving it."
+      }
+    })
+  },
+  {
+    name: "coolify_config_status",
+    title: "Coolify Connection Status",
+    description: "Show whether this plugin has a saved Coolify connection without revealing the token.",
+    inputSchema: objectSchema({})
+  },
+  {
+    name: "coolify_logout",
+    title: "Forget Coolify Connection",
+    description: "Remove the saved Coolify connection from local plugin storage.",
+    inputSchema: objectSchema({})
   },
   {
     name: "coolify_health",
@@ -140,27 +187,59 @@ const tools = [
 
 const handlers = {
   async coolify_setup(args) {
-    const baseUrl = optionalString(args.baseUrl, "baseUrl") || process.env.COOLIFY_BASE_URL || DEFAULT_COOLIFY_BASE_URL;
+    const current = loadCredentials({ requireToken: false });
+    const baseUrl = optionalString(args.baseUrl, "baseUrl") || current.rootBase || DEFAULT_COOLIFY_BASE_URL;
     const cfg = normalizeBaseUrl(baseUrl);
     return toolText({
       baseUrl: cfg.rootBase,
       apiBaseUrl: cfg.apiBase,
       tokenUrl: `${cfg.rootBase}/security/api-tokens`,
       apiSettingsUrl: `${cfg.rootBase}/settings/advanced`,
+      configured: Boolean(current.token),
+      tokenSource: current.tokenSource || null,
       docs: {
         authorization: "https://coolify.io/docs/api-reference/authorization",
         mcp: "https://coolify.io/docs/integrations/mcp"
       },
-      env: {
-        COOLIFY_BASE_URL: cfg.rootBase,
-        COOLIFY_API_TOKEN: "create a scoped token in the browser and set it outside chat"
-      },
       notes: [
         "Coolify does not currently document OAuth-style browser authorization for API clients.",
-        "Create an API token in the browser, then set COOLIFY_API_TOKEN in the environment where Codex starts MCP servers.",
+        "Create a scoped token in the browser, then call coolify_configure to save it locally.",
+        "The token is stored in macOS Keychain when available, otherwise in a local config file with owner-only permissions.",
         "Use the least-privileged token that can perform the work you want Codex to do."
       ]
     }, { revealSensitive: true });
+  },
+
+  async coolify_configure(args) {
+    const current = loadCredentials({ requireToken: false });
+    const baseUrl = optionalString(args.baseUrl, "baseUrl") || current.rootBase || DEFAULT_COOLIFY_BASE_URL;
+    const cfg = normalizeBaseUrl(baseUrl);
+    const apiToken = optionalString(args.apiToken, "apiToken");
+
+    if (!apiToken) {
+      return toolText(await startBrowserSetup({ baseUrl: cfg.rootBase, openBrowser: args.openBrowser !== false }), {
+        revealSensitive: true
+      });
+    }
+
+    if (args.verify !== false) {
+      await coolifyFetch("/version", {
+        credentials: {
+          ...cfg,
+          token: apiToken
+        }
+      });
+    }
+
+    return toolText(saveCredentials({ baseUrl: cfg.rootBase, apiToken }));
+  },
+
+  async coolify_config_status() {
+    return toolText(credentialStatus());
+  },
+
+  async coolify_logout() {
+    return toolText(clearStoredCredentials());
   },
 
   async coolify_health() {
@@ -308,30 +387,8 @@ function objectSchema(properties, required = []) {
   };
 }
 
-function normalizeBaseUrl(value) {
-  const raw = (value || DEFAULT_COOLIFY_BASE_URL).trim().replace(/\/+$/, "");
-  if (!raw) {
-    throw new Error("Set COOLIFY_BASE_URL to a Coolify root or API URL.");
-  }
-  const url = new URL(raw);
-  if (!["http:", "https:"].includes(url.protocol)) {
-    throw new Error("COOLIFY_BASE_URL must start with http:// or https://.");
-  }
-  const base = url.toString().replace(/\/+$/, "");
-  const apiBase = base.endsWith("/api/v1") ? base : `${base}/api/v1`;
-  const rootBase = base.endsWith("/api/v1") ? base.slice(0, -"/api/v1".length) : base;
-  return { apiBase, rootBase };
-}
-
 function config({ requireToken = true } = {}) {
-  const token = (process.env.COOLIFY_API_TOKEN || "").trim();
-  if (requireToken && !token) {
-    throw new Error("Set COOLIFY_API_TOKEN to a Coolify API token.");
-  }
-  return {
-    ...normalizeBaseUrl(process.env.COOLIFY_BASE_URL || DEFAULT_COOLIFY_BASE_URL),
-    token
-  };
+  return loadCredentials({ requireToken });
 }
 
 function buildUrl(baseUrl, path, query = {}) {
@@ -359,8 +416,8 @@ function pathWithId(template, id) {
   return template.replace("{uuid}", encodeURIComponent(id)).replace("{id}", encodeURIComponent(id));
 }
 
-async function coolifyFetch(path, { method = "GET", query, body, requireToken = true, apiBase } = {}) {
-  const cfg = config({ requireToken });
+async function coolifyFetch(path, { method = "GET", query, body, requireToken = true, apiBase, credentials } = {}) {
+  const cfg = credentials || config({ requireToken });
   const url = buildUrl(apiBase || cfg.apiBase, path, query);
   const headers = { Accept: "application/json" };
   if (cfg.token) {
@@ -391,6 +448,262 @@ async function coolifyFetch(path, { method = "GET", query, body, requireToken = 
     throw error;
   }
   return { status: response.status, data };
+}
+
+let setupSession = null;
+
+async function startBrowserSetup({ baseUrl, openBrowser = true }) {
+  if (setupSession) {
+    setupSession.close();
+    setupSession = null;
+  }
+
+  const cfg = normalizeBaseUrl(baseUrl);
+  const secret = randomBytes(24).toString("base64url");
+  const server = http.createServer((request, response) => {
+    handleSetupRequest(request, response, { cfg, secret }).catch((error) => {
+      console.error(`Coolify setup failed: ${error.message}`);
+      sendSetupPage(response, 500, setupPage({
+        baseUrl: cfg.rootBase,
+        tokenUrl: `${cfg.rootBase}/security/api-tokens`,
+        secret,
+        message: "We couldn't save the connection. Check the token and try again.",
+        isError: true
+      }));
+    });
+  });
+
+  await new Promise((resolveListen, rejectListen) => {
+    server.once("error", rejectListen);
+    server.listen(0, "127.0.0.1", () => {
+      server.off("error", rejectListen);
+      resolveListen();
+    });
+  });
+
+  const { port } = server.address();
+  const setupUrl = `http://127.0.0.1:${port}/?secret=${encodeURIComponent(secret)}`;
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+  const timeout = setTimeout(() => {
+    server.close();
+    if (setupSession?.server === server) {
+      setupSession = null;
+    }
+  }, 10 * 60 * 1000);
+  timeout.unref();
+
+  setupSession = {
+    server,
+    close() {
+      clearTimeout(timeout);
+      server.close();
+    }
+  };
+
+  if (openBrowser) {
+    openUrl(setupUrl);
+  }
+
+  return {
+    setupUrl,
+    openedBrowser: Boolean(openBrowser),
+    expiresAt,
+    baseUrl: cfg.rootBase,
+    tokenUrl: `${cfg.rootBase}/security/api-tokens`,
+    note: "Complete setup in the browser window. The token is saved locally and is not returned to Codex."
+  };
+}
+
+async function handleSetupRequest(request, response, { cfg, secret }) {
+  const url = new URL(request.url || "/", `http://${request.headers.host || "127.0.0.1"}`);
+  if (url.searchParams.get("secret") !== secret) {
+    sendSetupPage(response, 404, setupPage({
+      baseUrl: cfg.rootBase,
+      tokenUrl: `${cfg.rootBase}/security/api-tokens`,
+      secret,
+      message: "This setup link is no longer available.",
+      isError: true
+    }));
+    return;
+  }
+
+  if (request.method === "GET") {
+    sendSetupPage(response, 200, setupPage({
+      baseUrl: cfg.rootBase,
+      tokenUrl: `${cfg.rootBase}/security/api-tokens`,
+      secret
+    }));
+    return;
+  }
+
+  if (request.method !== "POST") {
+    response.writeHead(405).end();
+    return;
+  }
+
+  const body = await readRequestBody(request);
+  const params = new URLSearchParams(body);
+  const apiToken = (params.get("apiToken") || "").trim();
+  if (!apiToken) {
+    sendSetupPage(response, 400, setupPage({
+      baseUrl: cfg.rootBase,
+      tokenUrl: `${cfg.rootBase}/security/api-tokens`,
+      secret,
+      message: "Paste a token to continue.",
+      isError: true
+    }));
+    return;
+  }
+
+  try {
+    await coolifyFetch("/version", {
+      credentials: {
+        ...cfg,
+        token: apiToken
+      }
+    });
+    saveCredentials({ baseUrl: cfg.rootBase, apiToken });
+    sendSetupPage(response, 200, successPage(cfg.rootBase));
+    setupSession?.close();
+    setupSession = null;
+  } catch (error) {
+    console.error(`Coolify setup verification failed: ${error.message}`);
+    sendSetupPage(response, 400, setupPage({
+      baseUrl: cfg.rootBase,
+      tokenUrl: `${cfg.rootBase}/security/api-tokens`,
+      secret,
+      message: "We couldn't connect with that token. Check it and try again.",
+      isError: true
+    }));
+  }
+}
+
+function readRequestBody(request) {
+  return new Promise((resolveBody, rejectBody) => {
+    let body = "";
+    request.setEncoding("utf8");
+    request.on("data", (chunk) => {
+      body += chunk;
+      if (body.length > 64 * 1024) {
+        rejectBody(new Error("Request body is too large."));
+        request.destroy();
+      }
+    });
+    request.on("end", () => resolveBody(body));
+    request.on("error", rejectBody);
+  });
+}
+
+function openUrl(url) {
+  let command;
+  let args;
+  if (process.platform === "darwin") {
+    command = "open";
+    args = [url];
+  } else if (process.platform === "win32") {
+    command = "cmd";
+    args = ["/c", "start", "", url];
+  } else {
+    command = "xdg-open";
+    args = [url];
+  }
+  try {
+    const child = spawn(command, args, { detached: true, stdio: "ignore" });
+    child.unref();
+  } catch (error) {
+    console.error(`Could not open setup page: ${error.message}`);
+  }
+}
+
+function sendSetupPage(response, status, html) {
+  response.writeHead(status, {
+    "Content-Type": "text/html; charset=utf-8",
+    "Cache-Control": "no-store",
+    "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"
+  });
+  response.end(html);
+}
+
+function setupPage({ baseUrl, tokenUrl, secret, message = "", isError = false }) {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Connect Coolify</title>
+  <style>
+    :root { color-scheme: light dark; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f6f7f9; color: #15171a; }
+    main { width: min(440px, calc(100vw - 32px)); }
+    h1 { margin: 0 0 12px; font-size: 28px; line-height: 1.15; }
+    p { color: #4b5563; line-height: 1.5; }
+    a { color: #2563eb; }
+    label { display: block; margin: 20px 0 8px; font-weight: 650; }
+    input { width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: 8px; border: 1px solid #cfd5df; font: inherit; }
+    button { margin-top: 16px; width: 100%; border: 0; border-radius: 8px; padding: 12px 14px; font: inherit; font-weight: 700; background: #111827; color: white; cursor: pointer; }
+    .note { font-size: 14px; }
+    .message { margin-top: 16px; padding: 12px; border-radius: 8px; background: ${isError ? "#fee2e2" : "#e8f5ee"}; color: ${isError ? "#7f1d1d" : "#14532d"}; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #101214; color: #f3f4f6; }
+      p { color: #bac1cc; }
+      input { background: #181b20; color: #f9fafb; border-color: #3d4552; }
+      button { background: #f9fafb; color: #111827; }
+      a { color: #93c5fd; }
+      .message { background: ${isError ? "#451a1a" : "#10351f"}; color: ${isError ? "#fecaca" : "#bbf7d0"}; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Connect Coolify</h1>
+    <p>Create a scoped token in Coolify, then paste it here to save this connection locally.</p>
+    <p class="note"><a href="${escapeHtml(tokenUrl)}" target="_blank" rel="noreferrer">Open token page</a> for ${escapeHtml(baseUrl)}</p>
+    <form method="post" action="/?secret=${encodeURIComponent(secret)}">
+      <label for="apiToken">API token</label>
+      <input id="apiToken" name="apiToken" type="password" autocomplete="off" autofocus required>
+      <button type="submit">Save Connection</button>
+    </form>
+    ${message ? `<div class="message">${escapeHtml(message)}</div>` : ""}
+  </main>
+</body>
+</html>`;
+}
+
+function successPage(baseUrl) {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Coolify Connected</title>
+  <style>
+    :root { color-scheme: light dark; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f6f7f9; color: #15171a; }
+    main { width: min(420px, calc(100vw - 32px)); }
+    h1 { margin: 0 0 12px; font-size: 28px; line-height: 1.15; }
+    p { color: #4b5563; line-height: 1.5; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #101214; color: #f3f4f6; }
+      p { color: #bac1cc; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Coolify Connected</h1>
+    <p>The connection for ${escapeHtml(baseUrl)} is saved. You can close this window and return to Codex.</p>
+  </main>
+</body>
+</html>`;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 function summarizeOperation(path, method, operation) {

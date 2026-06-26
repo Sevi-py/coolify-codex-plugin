@@ -1,6 +1,6 @@
 ---
 name: coolify
-description: Control Coolify Cloud or self-hosted Coolify instances from Codex using the bundled Coolify API MCP server. Use when the user asks to inspect, deploy, create, update, restart, stop, configure, or troubleshoot Coolify applications, services, databases, servers, projects, deployments, environment variables, domains, teams, private keys, GitHub apps, cloud tokens, scheduled tasks, backups, or other Coolify API resources.
+description: Control Coolify Cloud or self-hosted Coolify instances from Codex using the bundled Coolify API MCP server. Use when the user asks to inspect, deploy, create, update, restart, stop, configure, or troubleshoot Coolify applications, services, databases, servers, projects, deployments, environment variables, domains, teams, private keys, GitHub apps, cloud tokens, scheduled tasks, backups, or other Coolify API resources. For connecting the plugin, first-time setup, saved credentials, login, logout, or marketplace onboarding, use the coolify-setup skill instead.
 license: MIT
 ---
 
@@ -16,33 +16,16 @@ Use this skill when working with Coolify Cloud or a self-hosted Coolify instance
 4. Treat deployments, starts, stops, restarts, deletes, env changes, private key changes, cloud token changes, API enable/disable, MCP enable/disable, server creation, and domain overrides as mutating operations.
 5. For destructive or broad mutating operations, restate the exact target UUID/name and proceed only when the user's request is already clear.
 
-## Configuration
+## Connection
 
-The MCP server expects:
-
-- `COOLIFY_BASE_URL`: optional for Coolify Cloud, which defaults to `https://app.coolify.io`; set it to the instance root or `/api/v1` URL for a self-hosted instance.
-- `COOLIFY_API_TOKEN`: a scoped Coolify API token.
-
-If a tool reports missing token configuration, help the user set `COOLIFY_API_TOKEN`. If the user is not using Coolify Cloud, help them set `COOLIFY_BASE_URL` too. Do not ask the user to paste secrets into chat unless there is no safer path.
-
-Coolify does not currently document browser OAuth-style authorization for API clients. If the user wants setup help, use `coolify_setup` or suggest running:
-
-```bash
-npm run setup
-```
-
-For self-hosted instances, pass the instance URL:
-
-```bash
-npm run setup -- https://coolify.example.com
-```
+Assume the plugin may already have a saved local connection. If a tool reports missing token configuration, expired credentials, or a wrong instance, switch to the `coolify-setup` skill and help the user connect Coolify. Do not ask the user to paste secrets into chat.
 
 ## Tooling Strategy
 
 Use MCP tools from `coolify-api` when available:
 
 - `coolify_health`: verify instance health and version.
-- `coolify_setup`: generate setup URLs and token guidance.
+- `coolify_config_status`: check saved connection state without revealing secrets.
 - `coolify_list`: list common resources.
 - `coolify_get`: inspect one resource.
 - `coolify_lifecycle`: start, stop, or restart apps, services, and databases.

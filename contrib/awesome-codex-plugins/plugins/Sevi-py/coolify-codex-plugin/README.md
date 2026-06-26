@@ -23,35 +23,48 @@ The plugin is built around a sanitized endpoint index generated from Coolify's o
 
 Create an API token in Coolify at `/security/api-tokens`. Use the least-privileged token that can perform the work you want Codex to do.
 
-Coolify does not currently document a browser OAuth flow for API clients. This plugin includes a setup helper that opens the right dashboard page and prints the environment variables to set:
+After installing from the Codex plugin marketplace, start a new Codex thread and ask:
+
+```text
+Connect Coolify
+```
+
+Codex will open a short-lived local setup page where you can paste a scoped Coolify token. The token is saved locally and is not returned to the chat.
+
+For local development, you can also run:
 
 ```bash
 npm run setup
+npm run setup -- --save
 ```
 
-By default, the plugin targets Coolify Cloud at `https://app.coolify.io`. Pass a URL or set `COOLIFY_BASE_URL` when you want to use a self-hosted instance.
+By default, the plugin targets Coolify Cloud at `https://app.coolify.io`. Pass a URL when you want to use a self-hosted instance.
 
 ## Configuration
 
-Set these environment variables where Codex starts MCP servers:
+Marketplace users should use the `coolify_configure` MCP tool by asking Codex to connect Coolify. For local development, run:
 
 ```bash
-export COOLIFY_BASE_URL="https://app.coolify.io"
-export COOLIFY_API_TOKEN="your-coolify-api-token"
+npm run setup -- --save
 ```
 
-`COOLIFY_BASE_URL` is optional for Coolify Cloud. For a self-hosted instance, set it to either the instance root or the API root:
+For self-hosted instances, pass either the instance root or the API root:
 
 ```bash
-https://coolify.example.com
-https://coolify.example.com/api/v1
+npm run setup -- --save https://coolify.example.com
+npm run setup -- --save https://coolify.example.com/api/v1
 ```
+
+The token is stored in macOS Keychain when available. On other systems, or when Keychain is unavailable, the plugin stores it in a local config file under `CODEX_HOME` or `~/.codex` with owner-only permissions. `COOLIFY_BASE_URL` and `COOLIFY_API_TOKEN` are still supported as fallbacks for automation.
 
 ## MCP Tools
 
 | Tool | Purpose |
 | --- | --- |
 | `coolify_setup` | Generate setup URLs and token guidance. |
+| `coolify_configure` | Open a local browser setup page or save a Coolify URL and API token locally. |
+| `coolify_config_status` | Check whether a connection is configured without revealing the token. |
+| `coolify_logout` | Remove the saved local connection. |
 | `coolify_health` | Check instance health and version. |
 | `coolify_openapi_search` | Find official endpoints, schemas, and request shapes. |
 | `coolify_request` | Call any relative Coolify API path. |
@@ -69,6 +82,7 @@ Sensitive-looking fields are redacted by default. Some tools accept `revealSensi
 ```bash
 npm run setup -- --no-open
 npm run setup -- --no-open https://coolify.example.com
+npm run setup -- --save https://coolify.example.com
 npm run check
 npm run inspect:openapi
 ```

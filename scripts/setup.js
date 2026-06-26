@@ -1,35 +1,29 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
+import readline from "node:readline";
+import {
+  credentialStatus,
+  DEFAULT_COOLIFY_BASE_URL,
+  normalizeBaseUrl,
+  saveCredentials
+} from "../src/credentials.js";
 
 const args = new Set(process.argv.slice(2));
 const positional = process.argv.slice(2).filter((arg) => !arg.startsWith("--"));
-const DEFAULT_COOLIFY_BASE_URL = "https://app.coolify.io";
 
 function usage() {
   console.log(`Coolify Codex Plugin setup
 
 Usage:
   npm run setup
+  npm run setup -- --save
   npm run setup -- --no-open
   npm run setup -- https://coolify.example.com
 
-This helper opens the Coolify API token page and prints the environment
-variables this plugin needs. Coolify does not currently document a browser
-OAuth flow for API clients, so the token still has to be created in Coolify.
+This helper opens the Coolify API token page and can save a local plugin
+connection. Coolify does not currently document a browser OAuth flow for API
+clients, so the token still has to be created in Coolify.
 Without a URL argument, setup uses Coolify Cloud (${DEFAULT_COOLIFY_BASE_URL}).`);
-}
-
-function normalizeBaseUrl(value) {
-  const raw = (value || "").trim().replace(/\/+$/, "");
-  if (!raw) {
-    throw new Error("A Coolify base URL is required.");
-  }
-  const url = new URL(raw);
-  if (!["http:", "https:"].includes(url.protocol)) {
-    throw new Error("The Coolify base URL must start with http:// or https://.");
-  }
-  const base = url.toString().replace(/\/+$/, "");
-  return base.endsWith("/api/v1") ? base.slice(0, -"/api/v1".length) : base;
 }
 
 function browserCommand(url) {
@@ -56,8 +50,9 @@ if (args.has("--help") || args.has("-h")) {
   process.exit(0);
 }
 
-const rawBaseUrl = positional[0] || process.env.COOLIFY_BASE_URL || DEFAULT_COOLIFY_BASE_URL;
-const baseUrl = normalizeBaseUrl(rawBaseUrl);
+const current = credentialStatus();
+const rawBaseUrl = positional[0] || current.baseUrl || DEFAULT_COOLIFY_BASE_URL;
+const baseUrl = normalizeBaseUrl(rawBaseUrl).rootBase;
 const tokenUrl = `${baseUrl}/security/api-tokens`;
 const apiSettingsUrl = `${baseUrl}/settings/advanced`;
 
@@ -70,11 +65,72 @@ if (!args.has("--no-open")) {
   console.log("\nOpened the API token page in your browser.");
 }
 
-console.log(`
-After creating a scoped token, set these where Codex starts MCP servers:
+if (args.has("--save")) {
+  const apiToken = await askHidden("\nPaste the scoped Coolify API token: ");
+  const status = saveCredentials({ baseUrl, apiToken });
+  console.log(`\nSaved the Coolify connection for ${status.baseUrl}.`);
+  console.log(`Token storage: ${status.storage || status.tokenSource || "local"}`);
+  console.log(`Config path: ${status.configPath}`);
+} else {
+  console.log(`
+After creating a scoped token, save it by asking Codex to configure Coolify, or run:
 
-  export COOLIFY_BASE_URL="${baseUrl}"
-  export COOLIFY_API_TOKEN="<token from Coolify>"
+  npm run setup -- --save "${baseUrl}"
+
+The plugin stores the token in macOS Keychain when available, otherwise in a
+local config file with owner-only permissions. Environment variables remain
+supported for automation, but are not required for normal use.
 
 Use the least-privileged token that can perform the work you want Codex to do.
 `);
+}
+
+function askHidden(prompt) {
+  return new Promise((resolveInput) => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+      terminal: true
+    });
+
+    const stdin = process.stdin;
+    const wasRaw = stdin.isRaw;
+    if (stdin.isTTY) {
+      stdin.setRawMode(true);
+    }
+    process.stdout.write(prompt);
+
+    let value = "";
+    stdin.on("data", onData);
+
+    function onData(buffer) {
+      const text = buffer.toString("utf8");
+      for (const char of text) {
+        if (char === "\n" || char === "\r" || char === "\u0004") {
+          cleanup();
+          process.stdout.write("\n");
+          resolveInput(value.trim());
+          return;
+        }
+        if (char === "\u0003") {
+          cleanup();
+          process.stdout.write("\n");
+          process.exit(130);
+        }
+        if (char === "\b" || char === "\u007f") {
+          value = value.slice(0, -1);
+          continue;
+        }
+        value += char;
+      }
+    }
+
+    function cleanup() {
+      stdin.off("data", onData);
+      if (stdin.isTTY) {
+        stdin.setRawMode(wasRaw);
+      }
+      rl.close();
+    }
+  });
+}
