@@ -51,7 +51,7 @@ Do not make marketplace users set these manually.
 - Coolify API authentication uses `Authorization: Bearer <token>`.
 - Coolify does not currently document browser OAuth-style authorization for API clients.
 - Ask users to create a least-privileged scoped token.
-- Do not ask users to paste tokens into chat unless the browser setup page is unavailable and they explicitly accept that tradeoff.
+- Do not ask users to paste tokens into chat.
 - Never print, summarize, or echo API tokens.
 
 ## Reset Or Switch Instance
