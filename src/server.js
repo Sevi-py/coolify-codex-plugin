@@ -35,6 +35,17 @@ const itemPaths = {
 
 const tools = [
   {
+    name: "coolify_setup",
+    title: "Coolify Setup Helper",
+    description: "Generate setup URLs and environment-variable guidance for connecting this plugin to a Coolify instance.",
+    inputSchema: objectSchema({
+      baseUrl: {
+        type: "string",
+        description: "Optional Coolify instance URL. Falls back to COOLIFY_BASE_URL when omitted."
+      }
+    })
+  },
+  {
     name: "coolify_health",
     title: "Coolify Health",
     description: "Check Coolify health and version without exposing credentials.",
@@ -127,6 +138,30 @@ const tools = [
 ];
 
 const handlers = {
+  async coolify_setup(args) {
+    const baseUrl = optionalString(args.baseUrl, "baseUrl") || process.env.COOLIFY_BASE_URL;
+    const cfg = normalizeBaseUrl(baseUrl);
+    return toolText({
+      baseUrl: cfg.rootBase,
+      apiBaseUrl: cfg.apiBase,
+      tokenUrl: `${cfg.rootBase}/security/api-tokens`,
+      apiSettingsUrl: `${cfg.rootBase}/settings/advanced`,
+      docs: {
+        authorization: "https://coolify.io/docs/api-reference/authorization",
+        mcp: "https://coolify.io/docs/integrations/mcp"
+      },
+      env: {
+        COOLIFY_BASE_URL: cfg.rootBase,
+        COOLIFY_API_TOKEN: "create a scoped token in the browser and set it outside chat"
+      },
+      notes: [
+        "Coolify does not currently document OAuth-style browser authorization for API clients.",
+        "Create an API token in the browser, then set COOLIFY_API_TOKEN in the environment where Codex starts MCP servers.",
+        "Use the least-privileged token that can perform the work you want Codex to do."
+      ]
+    }, { revealSensitive: true });
+  },
+
   async coolify_health() {
     const cfg = config({ requireToken: false });
     let health;

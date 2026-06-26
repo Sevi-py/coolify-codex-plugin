@@ -15,6 +15,7 @@
     "url": "https://github.com/Sevi-py/coolify-codex-plugin/issues"
   },
   "scripts": {
+    "setup": "node ./scripts/setup.js",
     "start": "node ./src/server.js",
     "check": "node --check ./src/server.js",
     "inspect:openapi": "node ./scripts/inspect-openapi.js"

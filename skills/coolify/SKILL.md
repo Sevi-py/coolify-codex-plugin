@@ -25,11 +25,18 @@ The MCP server expects:
 
 If a tool reports missing configuration, help the user set those environment variables. Do not ask the user to paste secrets into chat unless there is no safer path.
 
+Coolify does not currently document browser OAuth-style authorization for API clients. If the user wants setup help, use `coolify_setup` or suggest running:
+
+```bash
+npm run setup -- https://coolify.example.com
+```
+
 ## Tooling Strategy
 
 Use MCP tools from `coolify-api` when available:
 
 - `coolify_health`: verify instance health and version.
+- `coolify_setup`: generate setup URLs and token guidance.
 - `coolify_list`: list common resources.
 - `coolify_get`: inspect one resource.
 - `coolify_lifecycle`: start, stop, or restart apps, services, and databases.

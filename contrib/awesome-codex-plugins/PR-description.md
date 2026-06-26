@@ -4,8 +4,8 @@ Adds Coolify, a Codex plugin for controlling self-hosted Coolify instances throu
 
 ## Scanner
 
-- Local scanner score: pending
-- Plugin repo CI run: pending
+- Local scanner score: 97/100 (A), no critical/high/medium/low findings
+- Plugin repo CI run: pending on private repo; rerun after publishing or after CI permissions are available
 
 ## Checklist
 

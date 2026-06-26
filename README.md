@@ -23,6 +23,12 @@ The plugin is built around a sanitized endpoint index generated from Coolify's o
 
 Create an API token in Coolify at `/security/api-tokens`. Use the least-privileged token that can perform the work you want Codex to do.
 
+Coolify does not currently document a browser OAuth flow for API clients. This plugin includes a setup helper that opens the right dashboard page and prints the environment variables to set:
+
+```bash
+npm run setup -- https://coolify.example.com
+```
+
 ## Configuration
 
 Set these environment variables where Codex starts MCP servers:
@@ -43,6 +49,7 @@ https://coolify.example.com/api/v1
 
 | Tool | Purpose |
 | --- | --- |
+| `coolify_setup` | Generate setup URLs and token guidance. |
 | `coolify_health` | Check instance health and version. |
 | `coolify_openapi_search` | Find official endpoints, schemas, and request shapes. |
 | `coolify_request` | Call any relative Coolify API path. |
@@ -58,11 +65,12 @@ Sensitive-looking fields are redacted by default. Some tools accept `revealSensi
 ## Development
 
 ```bash
+npm run setup -- --no-open https://coolify.example.com
 npm run check
 npm run inspect:openapi
 ```
 
-The MCP server is dependency-free and uses only Node.js built-ins.
+The MCP server and setup helper are dependency-free and use only Node.js built-ins. The server is written in plain JavaScript so the plugin can run directly without a TypeScript build step.
 
 ## Sources
 
