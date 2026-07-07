@@ -14,15 +14,19 @@ Marketplace users should not need a repo checkout or shell command.
 
 1. Run `coolify_config_status` to see whether a connection is already saved.
 2. If no usable connection exists, run `coolify_configure` without an `apiToken` argument.
-3. Tell the user to complete the browser window that opens. The page lets them create or paste a scoped Coolify API token and saves it locally.
+3. Tell the user to complete the browser window that opens. The page first asks whether Coolify is Cloud-hosted or self-hosted; for self-hosted instances it asks for the URL before showing the matching token page.
 4. Run `coolify_config_status` again after the user says they finished.
 5. If configured, continue with the requested Coolify task or switch to the `coolify` skill for operational work.
 
 `coolify_configure` returns a short-lived local setup URL. If the browser does not open automatically, provide that URL to the user.
 
+If the Coolify MCP tools are not exposed in the thread, do not work around it by importing files from the current workspace or running repo-local setup code unless the user explicitly says they are developing this plugin from that checkout. For normal marketplace use, explain that the plugin tools did not load, ask the user to reinstall or update the plugin, and have them start a new thread so Codex can pick up the MCP server.
+
 ## Self-Hosted Instances
 
-For self-hosted Coolify, call `coolify_configure` with `baseUrl` set to the instance root or `/api/v1` URL:
+The browser setup handles self-hosted instances without requiring the user to paste a URL into chat.
+
+If the user already gave the instance URL, call `coolify_configure` with `baseUrl` set to the instance root or `/api/v1` URL:
 
 ```json
 {
@@ -30,13 +34,15 @@ For self-hosted Coolify, call `coolify_configure` with `baseUrl` set to the inst
 }
 ```
 
-The setup page links to the matching `/security/api-tokens` page.
+The setup page links to the matching `/security/api-tokens` page after the instance URL is known.
 
 ## Storage
 
 The token is stored locally:
 
 - macOS Keychain when available.
+- Windows Credential Manager when available.
+- Linux Secret Service via `secret-tool` when available.
 - Otherwise, a local config file under `CODEX_HOME` or `~/.codex` with owner-only permissions.
 
 Environment variables are fallback-only for automation:
@@ -57,11 +63,13 @@ Do not make marketplace users set these manually.
 ## Reset Or Switch Instance
 
 - Use `coolify_logout` to forget the saved local connection.
-- Then run `coolify_configure` again, passing `baseUrl` for a self-hosted instance when needed.
+- Then run `coolify_configure` again. The browser setup will ask whether the next connection is Coolify Cloud or self-hosted.
 
 ## Local Development Fallback
 
-If the user is developing the plugin from a local checkout and specifically wants a terminal command, they can run:
+Use this only when the user is developing the plugin from a local checkout and specifically wants a terminal command. Marketplace users should use `coolify_configure` instead.
+
+They can run:
 
 ```bash
 npm run setup -- --save

@@ -77,9 +77,10 @@ After creating a scoped token, save it by asking Codex to configure Coolify, or 
 
   npm run setup -- --save "${baseUrl}"
 
-The plugin stores the token in macOS Keychain when available, otherwise in a
-local config file with owner-only permissions. Environment variables remain
-supported for automation, but are not required for normal use.
+The plugin stores the token in the operating system credential store when
+available, otherwise in a local config file with owner-only permissions.
+Environment variables remain supported for automation, but are not required
+for normal use.
 
 Use the least-privileged token that can perform the work you want Codex to do.
 `);

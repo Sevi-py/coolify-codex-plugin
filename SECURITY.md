@@ -13,7 +13,7 @@ Do not include Coolify API tokens, server IPs, private keys, environment variabl
 ## Operational Notes
 
 - The plugin can save a local Coolify connection so users do not need shell environment variables.
-- Saved tokens use macOS Keychain when available. Otherwise, they are stored in a local config file under `CODEX_HOME` or `~/.codex` with owner-only permissions.
+- Saved tokens use the operating system credential store when available: macOS Keychain, Windows Credential Manager, or Linux Secret Service via `secret-tool`. Otherwise, they are stored in a local config file under `CODEX_HOME` or `~/.codex` with owner-only permissions.
 - The plugin still reads `COOLIFY_API_TOKEN` and `COOLIFY_BASE_URL` as fallbacks for automation.
 - If no base URL is configured, the plugin uses Coolify Cloud at `https://app.coolify.io`.
 - Tool responses redact sensitive-looking fields by default.

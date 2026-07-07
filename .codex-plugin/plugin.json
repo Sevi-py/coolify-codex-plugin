@@ -1,6 +1,6 @@
 {
   "name": "coolify",
-  "version": "0.1.0",
+  "version": "0.1.0+codex.20260707132342",
   "description": "Control Coolify Cloud and self-hosted Coolify instances from Codex with API-aware skills and an MCP server.",
   "author": {
     "name": "Severin Hilbert"
@@ -32,10 +32,12 @@
     "privacyPolicyURL": "https://coolify.io/privacy/",
     "termsOfServiceURL": "https://coolify.io/terms/",
     "defaultPrompt": [
-      "Inspect my Coolify instance and summarize what is running.",
+      "Set the plugin up and connect to my Coolify instance.",
       "Deploy a Coolify application and follow its logs.",
       "Create or update Coolify environment variables safely."
     ],
-    "brandColor": "#8B5CF6"
+    "brandColor": "#8B5CF6",
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/icon.png"
   }
 }

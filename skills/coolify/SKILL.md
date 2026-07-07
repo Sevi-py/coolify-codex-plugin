@@ -30,6 +30,7 @@ Use MCP tools from `coolify-api` when available:
 - `coolify_get`: inspect one resource.
 - `coolify_lifecycle`: start, stop, or restart apps, services, and databases.
 - `coolify_deploy`: trigger deployments by UUID or tag.
+- `coolify_deployment_history`: list deployment history for one application or all applications.
 - `coolify_application_logs`: fetch application logs.
 - `coolify_envs`: manage environment variables.
 - `coolify_openapi_search`: find less common endpoint details.
@@ -44,12 +45,13 @@ For endpoints not covered by named tools, call `coolify_openapi_search` first, t
 1. Run `coolify_health`.
 2. Run `coolify_request` for `/teams/current`.
 3. List `project`, `server`, `resource`, `application`, `service`, and `database` as needed.
-4. Summarize names, UUIDs, status, domains, servers, and project/environment relationships.
+4. If the user asks about deployments they "have" or deployment history, run `coolify_deployment_history`; do not rely on `coolify_list` with `kind: "deployment"` alone.
+5. Summarize names, UUIDs, status, domains, servers, deployment counts, and project/environment relationships.
 
 ### Deployment
 
 1. Identify the exact resource UUID or deployment tag.
-2. Check current resource status and recent deployments.
+2. Check current resource status and recent deployments with `coolify_deployment_history`.
 3. Run `coolify_deploy`.
 4. Poll deployments or fetch application logs if the user wants follow-up.
 
@@ -73,6 +75,8 @@ For endpoints not covered by named tools, call `coolify_openapi_search` first, t
 - Authentication uses `Authorization: Bearer <token>`.
 - Common resource identifiers are UUIDs. Team endpoints use numeric IDs.
 - `/health` may be available outside `/api/v1`; the MCP health tool handles both forms.
+- `GET /deployments` lists currently running deployments, not all historical deployments.
+- Historical application deployments live at `GET /deployments/applications/{uuid}`. Use `coolify_deployment_history` for user-facing deployment inventories.
 - `GET /deploy` triggers deployment by UUID or tag. Coolify also accepts deployment parameters in other forms, but prefer the tool unless OpenAPI lookup says otherwise.
 - Environment variable list responses can contain sensitive fields. Keep default redaction on unless raw values are required.
 

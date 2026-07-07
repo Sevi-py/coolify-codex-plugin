@@ -10,6 +10,7 @@ The plugin is built around a sanitized endpoint index generated from Coolify's o
 - List and inspect applications, databases, deployments, projects, resources, servers, services, and teams.
 - Start, stop, and restart applications, databases, and services.
 - Trigger deployments by UUID or tag.
+- Read deployment history across applications without mistaking the running-deployments endpoint for full history.
 - Read recent application logs.
 - List, create, update, bulk update, and delete environment variables.
 - Call any Coolify `/api/v1` endpoint with `coolify_request`.
@@ -29,7 +30,7 @@ After installing from the Codex plugin marketplace, start a new Codex thread and
 Connect Coolify
 ```
 
-Codex will open a short-lived local setup page where you can paste a scoped Coolify token. The token is saved locally and is not returned to the chat.
+Codex will open a short-lived local setup page. Choose Coolify Cloud or self-hosted first; for self-hosted instances, enter the instance URL so the matching token page is shown. The token is saved locally and is not returned to the chat.
 
 For local development, you can also run:
 
@@ -38,11 +39,11 @@ npm run setup
 npm run setup -- --save
 ```
 
-By default, the plugin targets Coolify Cloud at `https://app.coolify.io`. Pass a URL when you want to use a self-hosted instance.
+For local development without a URL argument, the terminal helper targets Coolify Cloud at `https://app.coolify.io`. Pass a URL when you want to use a self-hosted instance.
 
 ## Configuration
 
-Marketplace users should use the `coolify_configure` MCP tool by asking Codex to connect Coolify. For local development, run:
+Marketplace users should use the browser setup opened by `coolify_configure`; it asks whether the instance is Coolify Cloud or self-hosted before showing a token link. For local development, run:
 
 ```bash
 npm run setup -- --save
@@ -55,7 +56,7 @@ npm run setup -- --save https://coolify.example.com
 npm run setup -- --save https://coolify.example.com/api/v1
 ```
 
-The token is stored in macOS Keychain when available. On other systems, or when Keychain is unavailable, the plugin stores it in a local config file under `CODEX_HOME` or `~/.codex` with owner-only permissions. `COOLIFY_BASE_URL` and `COOLIFY_API_TOKEN` are still supported as fallbacks for automation.
+The token is stored in the operating system credential store when available: macOS Keychain, Windows Credential Manager, or Linux Secret Service via `secret-tool`. If no native credential store is available, the plugin stores it in a local config file under `CODEX_HOME` or `~/.codex` with owner-only permissions. `COOLIFY_BASE_URL` and `COOLIFY_API_TOKEN` are still supported as fallbacks for automation.
 
 ## MCP Tools
 
@@ -72,10 +73,13 @@ The token is stored in macOS Keychain when available. On other systems, or when 
 | `coolify_get` | Fetch one common resource. |
 | `coolify_lifecycle` | Start, stop, or restart a resource. |
 | `coolify_deploy` | Trigger a deployment. |
+| `coolify_deployment_history` | List deployment history for one application or all applications. |
 | `coolify_application_logs` | Fetch application logs. |
 | `coolify_envs` | Manage environment variables. |
 
 Sensitive-looking fields are redacted by default. Some tools accept `revealSensitive: true` for cases where the raw API response is explicitly needed.
+
+`coolify_list` with `kind: "deployment"` mirrors Coolify's `GET /deployments` endpoint, which lists currently running deployments. Use `coolify_deployment_history` when you need historical deployments.
 
 ## Development
 
