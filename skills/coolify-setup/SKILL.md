@@ -12,6 +12,8 @@ Use this skill for first-time setup, marketplace onboarding, saved credentials, 
 
 Marketplace users should not need a repo checkout or shell command.
 
+Before giving up on missing tools, call `tool_search` for `coolify_config_status coolify_configure mcp__coolify` when `tool_search` is available. The expected MCP namespace is `mcp__coolify`, and the setup tools are named `coolify_config_status`, `coolify_configure`, and `coolify_logout`.
+
 1. Run `coolify_config_status` to see whether a connection is already saved.
 2. If no usable connection exists, run `coolify_configure` without an `apiToken` argument.
 3. Tell the user to complete the browser window that opens. The page first asks whether Coolify is Cloud-hosted or self-hosted; for self-hosted instances it asks for the URL before showing the matching token page.
@@ -20,7 +22,7 @@ Marketplace users should not need a repo checkout or shell command.
 
 `coolify_configure` returns a short-lived local setup URL. If the browser does not open automatically, provide that URL to the user.
 
-If the Coolify MCP tools are not exposed in the thread, do not work around it by importing files from the current workspace or running repo-local setup code unless the user explicitly says they are developing this plugin from that checkout. For normal marketplace use, explain that the plugin tools did not load, ask the user to reinstall or update the plugin, and have them start a new thread so Codex can pick up the MCP server.
+If the Coolify MCP tools are not exposed in the thread after tool search, do not work around it by importing files from the current workspace or running repo-local setup code unless the user explicitly says they are developing this plugin from that checkout. For normal marketplace use, explain that the plugin's MCP tools did not load, ask the user to reinstall or update the plugin, and have them start a brand-new top-level thread so Codex can pick up the MCP server. Do not present a same-thread retry, delegated follow-up, or fork of the failed thread as the fix; those can preserve stale plugin capability metadata.
 
 ## Self-Hosted Instances
 

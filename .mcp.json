@@ -1,11 +1,10 @@
 {
   "mcpServers": {
-    "coolify-api": {
-      "command": "node",
-      "args": [
-        "./src/server.js"
-      ],
-      "cwd": "."
+    "coolify": {
+      "command": "./scripts/coolify-mcp",
+      "args": [],
+      "cwd": ".",
+      "startup_timeout_sec": 30
     }
   }
 }

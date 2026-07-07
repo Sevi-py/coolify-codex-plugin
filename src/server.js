@@ -868,6 +868,7 @@ function setupStyles(isError = false) {
     input { width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: 8px; border: 1px solid #cfd5df; font: inherit; }
     button { margin-top: 12px; width: 100%; border: 0; border-radius: 8px; padding: 12px 14px; font: inherit; font-weight: 700; background: #111827; color: white; cursor: pointer; }
     form:first-of-type button { margin-top: 0; background: #8b5cf6; }
+    #apiToken + button { margin-top: 20px; }
     .instance { margin: -8px 0 16px; color: #374151; font-weight: 650; overflow-wrap: anywhere; }
     .note { margin-top: 14px; font-size: 14px; }
     .message { margin-top: 16px; padding: 12px; border-radius: 8px; background: ${isError ? "#fee2e2" : "#e8f5ee"}; color: ${isError ? "#7f1d1d" : "#14532d"}; }
@@ -1021,6 +1022,10 @@ function summarizeError(error) {
 }
 
 function looksSensitive(key) {
+  const normalized = key.toLowerCase().replace(/[_-]/g, "");
+  if (["tokenurl", "cloudtokenurl", "tokensource"].includes(normalized)) {
+    return false;
+  }
   return /token|secret|password|passwd|private|credential|authorization|api[_-]?key|real_value|value/i.test(key);
 }
 
@@ -1084,8 +1089,14 @@ function clampInteger(value, min, max, name) {
   return value;
 }
 
+let responseFraming = "content-length";
+
 function writeMessage(message) {
   const payload = JSON.stringify(message);
+  if (responseFraming === "newline") {
+    process.stdout.write(`${payload}\n`);
+    return;
+  }
   const byteLength = Buffer.byteLength(payload, "utf8");
   process.stdout.write(`Content-Length: ${byteLength}\r\n\r\n${payload}`);
 }
@@ -1115,7 +1126,7 @@ async function handleMessage(message) {
           tools: {}
         },
         serverInfo: {
-          name: "coolify-api",
+          name: "coolify",
           version: "0.1.0"
         }
       });
@@ -1158,32 +1169,60 @@ class RpcError extends Error {
 
 let buffer = Buffer.alloc(0);
 
+function dispatchPayload(payload, framing) {
+  responseFraming = framing;
+  Promise.resolve()
+    .then(() => handleMessage(JSON.parse(payload)))
+    .catch((error) => {
+      console.error("Coolify MCP server error:", error);
+    });
+}
+
 process.stdin.on("data", (chunk) => {
   buffer = Buffer.concat([buffer, chunk]);
   while (true) {
-    const headerEnd = buffer.indexOf("\r\n\r\n");
-    if (headerEnd === -1) {
+    if (buffer.length === 0) {
       return;
     }
-    const header = buffer.slice(0, headerEnd).toString("utf8");
-    const match = /Content-Length:\s*(\d+)/i.exec(header);
-    if (!match) {
-      buffer = buffer.slice(headerEnd + 4);
+
+    if (buffer[0] === 10 || buffer[0] === 13) {
+      buffer = buffer.slice(1);
       continue;
     }
-    const length = Number(match[1]);
-    const messageStart = headerEnd + 4;
-    const messageEnd = messageStart + length;
-    if (buffer.length < messageEnd) {
+
+    const prefix = buffer.slice(0, Math.min(buffer.length, 32)).toString("utf8");
+    if (/^Content-Length:/i.test(prefix)) {
+      const headerEnd = buffer.indexOf("\r\n\r\n");
+      if (headerEnd === -1) {
+        return;
+      }
+      const header = buffer.slice(0, headerEnd).toString("utf8");
+      const match = /Content-Length:\s*(\d+)/i.exec(header);
+      if (!match) {
+        buffer = buffer.slice(headerEnd + 4);
+        continue;
+      }
+      const length = Number(match[1]);
+      const messageStart = headerEnd + 4;
+      const messageEnd = messageStart + length;
+      if (buffer.length < messageEnd) {
+        return;
+      }
+      const payload = buffer.slice(messageStart, messageEnd).toString("utf8");
+      buffer = buffer.slice(messageEnd);
+      dispatchPayload(payload, "content-length");
+      continue;
+    }
+
+    const lineEnd = buffer.indexOf("\n");
+    if (lineEnd === -1) {
       return;
     }
-    const payload = buffer.slice(messageStart, messageEnd).toString("utf8");
-    buffer = buffer.slice(messageEnd);
-    Promise.resolve()
-      .then(() => handleMessage(JSON.parse(payload)))
-      .catch((error) => {
-        console.error("Coolify MCP server error:", error);
-      });
+    const payload = buffer.slice(0, lineEnd).toString("utf8").trim();
+    buffer = buffer.slice(lineEnd + 1);
+    if (payload) {
+      dispatchPayload(payload, "newline");
+    }
   }
 });
 

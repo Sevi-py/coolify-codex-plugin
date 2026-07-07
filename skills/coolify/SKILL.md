@@ -22,7 +22,7 @@ Assume the plugin may already have a saved local connection. If a tool reports m
 
 ## Tooling Strategy
 
-Use MCP tools from `coolify-api` when available:
+Use MCP tools from the `coolify` server when available. In Codex tool names this normally appears as the `mcp__coolify` namespace, with the tool names below:
 
 - `coolify_health`: verify instance health and version.
 - `coolify_config_status`: check saved connection state without revealing secrets.
@@ -37,6 +37,8 @@ Use MCP tools from `coolify-api` when available:
 - `coolify_request`: call any relative `/api/v1` endpoint.
 
 For endpoints not covered by named tools, call `coolify_openapi_search` first, then use `coolify_request` with the path, query, and body shape from the bundled OpenAPI spec.
+
+If `tool_search` cannot find `mcp__coolify` or the named Coolify tools even though the plugin was referenced, switch to the `coolify-setup` skill. Do not simulate Coolify operations from repo-local scripts for marketplace users. A failed thread may have stale plugin capability metadata, so the recovery path is reinstall/update plus a brand-new top-level thread, not a same-thread retry or fork.
 
 ## Common Workflows
 

@@ -1,6 +1,6 @@
 {
   "name": "coolify",
-  "version": "0.1.0+codex.20260707132342",
+  "version": "0.1.0+codex.20260707165253",
   "description": "Control Coolify Cloud and self-hosted Coolify instances from Codex with API-aware skills and an MCP server.",
   "author": {
     "name": "Severin Hilbert"
